@@ -18,15 +18,19 @@ def get_summarise_prompt(title: str, transcript: str, type_: Literal["视频字�
     title = title.replace("\n", " ").strip() if title else ""
     transcript = transcript.replace("\n", " ").strip() if transcript else ""
     return get_full_prompt(
-        prompt=(
-            f"使用以下Markdown模板为我总结{type_}数据，除非{type_[2:]}中的内容无意义，或者内容较少无法总结，或者未提供{type_[2:]}数据，或者无有效内容，你就不使用模板回复，只回复“无意义”："
-            "\n## 概述"
-            "\n{内容，尽可能精简总结内容不要太详细}"
-            "\n## 要点"
-            "\n- {使用不重复并合适的emoji，仅限一个，禁止重复} {内容不换行大于15字，可多项，条数与有效内容数量呈正比}"
-            "\n不要随意翻译任何内容。仅使用中文总结。"
-            "\n不说与总结无关的其他内容，你的回复仅限固定格式提供的“概述”和“要点”两项。"
-            f"{type_[:2]}标题为“{title}”，{type_}数据如下，立刻开始总结：“{transcript}”"
+        prompt = (
+            f"Title: \"{title}\"\n"
+            f"Transcript: \"{transcript}\"\n\n"
+            "Instructions:\n"
+            "Act as a professional video content editor. Please help summarize the essence of the video in 中文.\n\n"
+            "- Start with a one-sentence summary of the entire video.\n"
+            "- Then, provide exactly 5 bullet points summarizing the key content of the video.\n"
+            "- Each bullet point should start with the start timestamp in the format \"[seconds] - \".\n"
+            "- Each bullet point should be at least 15 words long.\n"
+            "- If applicable, include a relevant emoji at the beginning of each bullet point.\n"
+            "- Correct any typos found in the subtitles.\n"
+            "- Ensure that all sentences are concise, clear, and complete.\n\n"
+            "Good luck!"
         )
     )
 

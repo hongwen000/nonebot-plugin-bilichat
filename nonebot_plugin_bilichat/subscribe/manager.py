@@ -428,7 +428,7 @@ class SubscriptionSystem:
         if refresh:
             logger.info("正在刷新目标缓存")
             await refresh_bots()
-        logger.info("正在刷新激活的UP列表")
+        logger.debug("正在刷新激活的UP列表")
         cls.activate_uploaders = {}
         for user in cls.users.values():
             logger.debug(f"正在尝试激活用户 {user._id} 订阅的 UP")

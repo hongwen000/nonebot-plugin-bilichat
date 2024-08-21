@@ -8,6 +8,7 @@ from ..model.bcut_asr import ResultStateEnum
 from ..model.exception import AbortError
 from .bcut_asr import BcutASR
 from .bilibili_request import get_player, grpc_get_playview, hc
+import datetime, os
 
 
 async def get_subtitle_url(aid: int, cid: int) -> str|None:
@@ -51,7 +52,7 @@ async def get_subtitle(aid: int, cid: int) -> list[str]:
             raise AbortError("Subtitle fetch failed")
         logger.debug(f"Subtitle fetched: {aid} {cid}")
     elif plugin_config.bilichat_use_bcut_asr:
-        logger.info(f"Subtitle not found, try using BCut-ASR: {aid} {cid}")
+        logger.info(f"Subtitle not found, try downloading the audio file and using BCut-ASR: {aid} {cid}")
         playview = await grpc_get_playview(aid, cid)
         if not playview.video_info.dash_audio:
             raise AbortError("Video has no audio streaming")
@@ -67,6 +68,13 @@ async def get_subtitle(aid: int, cid: int) -> list[str]:
             )
         audio_resp.raise_for_status()
         audio = audio_resp.content
+        logger.info(f"Got audio stream for BCut-ASR: {aid} {cid}, len {len(audio)}")
+        # write audio stream to m4a file
+        fn = f"audio_{aid}_{cid}.m4a"
+        fn = os.path.abspath(fn)
+        with open(fn, "wb") as f:
+            logger.info(f"Writing audio stream to {fn}")
+            f.write(audio)
         for count in range(plugin_config.bilichat_neterror_retry):
             try:
                 asr = await get_bcut_asr(audio)
@@ -82,7 +90,24 @@ async def get_subtitle(aid: int, cid: int) -> list[str]:
         raise AbortError("BCut-ASR conversion failed due to network error")
     else:
         raise AbortError("Subtitles not found and BCut-ASR is disabled in env")
-    return [x["content"] for x in subtitle.json()["body"]]
+    def format_time(seconds):
+        if seconds >= 3600:
+            return str(datetime.timedelta(seconds=int(seconds)))
+        else:
+            return str(datetime.timedelta(seconds=int(seconds)))[2:]
+
+    ret = []
+    for sentence in subtitle.json()["body"]:
+        time_start = sentence["from"]
+        time_end = sentence["to"]
+        content = sentence["content"]
+        
+        # Format time based on duration
+        formatted_start = format_time(time_start)
+        formatted_end = format_time(time_end)
+        
+        ret.append(f"{formatted_start} \n{content}")
+    return ret
 
 
 async def get_bcut_asr(file_bytes: bytes):
